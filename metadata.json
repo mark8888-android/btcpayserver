@@ -1,0 +1,6 @@
+{
+  "name": "BTCPay Processor",
+  "description": "A self-hosted cryptocurrency payment processor and merchant checkout system inspired by BTCPay Server, supporting on-chain Bitcoin, Lightning Network, stablecoins, point of sale, invoicing, and webhooks.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
