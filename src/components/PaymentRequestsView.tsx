@@ -412,7 +412,7 @@ export const PaymentRequestsView: React.FC<PaymentRequestsViewProps> = ({ active
                 <input
                   type="text"
                   required
-                  placeholder="bc1q... or 0x... or lnbc..."
+                  placeholder="1KLpq... or bc1q... or 0x... or lnbc..."
                   value={payoutAddress}
                   onChange={(e) => setPayoutAddress(e.target.value)}
                   className="w-full px-3 py-2 bg-white/5 border border-white/20 text-white font-mono focus:outline-none focus:border-orange-500"

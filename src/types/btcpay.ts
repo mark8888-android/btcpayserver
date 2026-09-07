@@ -18,6 +18,7 @@ export interface Store {
   exchangeRateProvider: string;
   customLogoUrl?: string;
   theme: 'dark' | 'light' | 'system';
+  paymentAddress?: string;
 }
 
 export interface Invoice {

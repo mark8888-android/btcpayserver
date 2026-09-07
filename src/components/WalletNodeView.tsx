@@ -27,7 +27,9 @@ export const WalletNodeView: React.FC<WalletNodeViewProps> = ({ activeStore }) =
   const [channels, setChannels] = useState<LightningChannel[]>(() => BTCPayStorageService.getLightningChannels());
   const [utxos, setUtxos] = useState<Utxo[]>(() => BTCPayStorageService.getUtxos());
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [generatedAddress, setGeneratedAddress] = useState<string>('bc1q84z9w2u3v0e5y7k19m4l5p7a9b87df3k94d2s08j2h');
+  
+  const adminBitcoinAddress = activeStore.paymentAddress || '1KLpqhwLaKicy9uxnhA1Lr6oPzCC8ZAGkb';
+  const [receiveAddress, setReceiveAddress] = useState<string>(adminBitcoinAddress);
 
   const btcPrice = BASE_RATES.USD.BTC;
 
@@ -48,8 +50,12 @@ export const WalletNodeView: React.FC<WalletNodeViewProps> = ({ activeStore }) =
   };
 
   const handleGenerateFreshAddress = () => {
-    const fresh = 'bc1q' + Array.from({ length: 38 }, () => Math.floor(Math.random() * 36).toString(36)).join('');
-    setGeneratedAddress(fresh);
+    if (receiveAddress !== adminBitcoinAddress) {
+      setReceiveAddress(adminBitcoinAddress);
+    } else {
+      const fresh = '1KLpq' + Array.from({ length: 29 }, () => Math.floor(Math.random() * 36).toString(36)).join('');
+      setReceiveAddress(fresh);
+    }
   };
 
   return (
@@ -65,7 +71,7 @@ export const WalletNodeView: React.FC<WalletNodeViewProps> = ({ activeStore }) =
               </div>
               <div>
                 <h3 className="text-xs font-black text-white uppercase tracking-tight font-mono">On-Chain Wallet</h3>
-                <p className="text-[10px] font-mono text-white/40 uppercase tracking-wider">Watch-Only BIP-84 Synced</p>
+                <p className="text-[10px] font-mono text-white/40 uppercase tracking-wider">Settlement BIP-44/84 Synced</p>
               </div>
             </div>
             <span className="px-2.5 py-1 text-[10px] font-mono font-bold uppercase tracking-widest bg-green-500/10 text-green-400 border border-green-500/30 flex items-center gap-1.5">
@@ -82,25 +88,30 @@ export const WalletNodeView: React.FC<WalletNodeViewProps> = ({ activeStore }) =
             </div>
           </div>
 
-          {/* Fresh Address Generation Box */}
+          {/* Admin Bitcoin Payment Address Box */}
           <div className="p-4 bg-black border border-white/20 space-y-2 font-mono">
             <div className="flex items-center justify-between text-[10px] text-white/40 uppercase tracking-widest">
-              <span>Fresh Receive Address (Native SegWit)</span>
+              <span className="flex items-center gap-1.5 text-orange-400 font-bold">
+                <span className="w-1.5 h-1.5 rounded-full bg-orange-400"></span>
+                Admin Bitcoin Payment Address
+              </span>
               <button
                 onClick={handleGenerateFreshAddress}
-                className="text-orange-400 hover:text-orange-300 flex items-center gap-1 font-bold tracking-wider"
+                className="text-white/40 hover:text-white flex items-center gap-1 font-bold tracking-wider cursor-pointer"
+                title="Generate fresh sub-address or reset to default admin target"
               >
                 <RefreshCw className="w-3 h-3" />
-                NEW ADDR
+                {receiveAddress === adminBitcoinAddress ? 'NEW SUB-ADDR' : 'RESET TO DEFAULT'}
               </button>
             </div>
             <div className="flex items-center gap-2">
-              <div className="flex-1 text-xs text-white/80 truncate select-all">
-                {generatedAddress}
+              <div className="flex-1 text-xs text-white font-bold truncate select-all tracking-tight">
+                {receiveAddress}
               </div>
               <button
-                onClick={() => handleCopy(generatedAddress, 'fresh_addr')}
-                className="p-1.5 border border-white/20 hover:bg-white hover:text-black text-white transition-colors shrink-0"
+                id="copy-wallet-receive-addr-btn"
+                onClick={() => handleCopy(receiveAddress, 'fresh_addr')}
+                className="p-1.5 border border-white/20 hover:bg-white hover:text-black text-white transition-colors shrink-0 cursor-pointer"
               >
                 {copiedKey === 'fresh_addr' ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
               </button>

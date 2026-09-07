@@ -29,6 +29,8 @@ const STORAGE_KEYS = {
 };
 
 // Initial Seed Data
+export const ADMIN_BITCOIN_PAYMENT_ADDRESS = '1KLpqhwLaKicy9uxnhA1Lr6oPzCC8ZAGkb';
+
 const INITIAL_STORES: Store[] = [
   {
     id: 'store_satoshicoffee',
@@ -43,6 +45,7 @@ const INITIAL_STORES: Store[] = [
     stablecoinsEnabled: true,
     exchangeRateProvider: 'CoinGecko',
     theme: 'light',
+    paymentAddress: ADMIN_BITCOIN_PAYMENT_ADDRESS,
   },
   {
     id: 'store_cyberpunkapparel',
@@ -57,6 +60,7 @@ const INITIAL_STORES: Store[] = [
     stablecoinsEnabled: true,
     exchangeRateProvider: 'Kraken',
     theme: 'dark',
+    paymentAddress: ADMIN_BITCOIN_PAYMENT_ADDRESS,
   },
 ];
 
@@ -136,7 +140,7 @@ const INITIAL_INVOICES: Invoice[] = [
     currency: 'USD',
     cryptoAmount: 0.00021183,
     cryptoCurrency: 'BTC-LN',
-    paymentAddress: 'bc1q87df3k94d2s08j2h56g8u4q21n9m4l5p7a9b',
+    paymentAddress: ADMIN_BITCOIN_PAYMENT_ADDRESS,
     lightningInvoice: 'lnbc211830n1p3v98xspp5x89e...',
     rate: 68450,
     orderId: 'ORD-9821',
@@ -158,7 +162,7 @@ const INITIAL_INVOICES: Invoice[] = [
     currency: 'USD',
     cryptoAmount: 0.00094959,
     cryptoCurrency: 'BTC',
-    paymentAddress: 'bc1q6z8k32x08v57gh2m1np4l0q9r2y8w3e5t7j4',
+    paymentAddress: ADMIN_BITCOIN_PAYMENT_ADDRESS,
     rate: 68450,
     orderId: 'ORD-9822',
     itemDesc: 'Running Bitcoin Embroidered Hoodie (Size L)',
@@ -179,7 +183,7 @@ const INITIAL_INVOICES: Invoice[] = [
     currency: 'USD',
     cryptoAmount: 0.00217677,
     cryptoCurrency: 'BTC',
-    paymentAddress: 'bc1qx7y2p98w3e5t7j4m1np4l0q9r2y8w3e5t7j9',
+    paymentAddress: ADMIN_BITCOIN_PAYMENT_ADDRESS,
     rate: 68450,
     orderId: 'ORD-9823',
     itemDesc: 'Hardware Wallet Air-Gapped Key',
@@ -377,7 +381,7 @@ const INITIAL_UTXOS: Utxo[] = [
   {
     txid: '9a8d7e6f5c4b3a210fedcba987654321abcdef0123456789abcdef0123456789',
     vout: 0,
-    address: 'bc1q6z8k32x08v57gh2m1np4l0q9r2y8w3e5t7j4',
+    address: ADMIN_BITCOIN_PAYMENT_ADDRESS,
     amountBtc: 0.00094959,
     confirmations: 6,
     label: 'ORD-9822 Hoodie payment',
@@ -385,7 +389,7 @@ const INITIAL_UTXOS: Utxo[] = [
   {
     txid: '3b2a10fe9a8d7e6f5c4dcba987654321abcdef0123456789abcdef0123456789',
     vout: 1,
-    address: 'bc1q7w9e2r4t6y8u0i1o3p5a7s9d1f3g5h7j9k1l',
+    address: ADMIN_BITCOIN_PAYMENT_ADDRESS,
     amountBtc: 0.14500000,
     confirmations: 142,
     label: 'Store Reserve Deposit',
@@ -393,7 +397,7 @@ const INITIAL_UTXOS: Utxo[] = [
   {
     txid: '7104b901fead29384729103847592817263541290x8841a0b3c2e1f49a8820c',
     vout: 0,
-    address: 'bc1qx7y2p98w3e5t7j4m1np4l0q9r2y8w3e5t7j9',
+    address: ADMIN_BITCOIN_PAYMENT_ADDRESS,
     amountBtc: 0.00217677,
     confirmations: 0,
     label: 'Mempool Unconfirmed: ORD-9823',
@@ -422,7 +426,11 @@ function setStorage<T>(key: string, value: T): void {
 export class BTCPayStorageService {
   // STORES
   static getStores(): Store[] {
-    return getStorage<Store[]>(STORAGE_KEYS.STORES, INITIAL_STORES);
+    const stores = getStorage<Store[]>(STORAGE_KEYS.STORES, INITIAL_STORES);
+    return stores.map((s) => ({
+      ...s,
+      paymentAddress: s.paymentAddress || ADMIN_BITCOIN_PAYMENT_ADDRESS,
+    }));
   }
 
   static getActiveStore(): Store {
@@ -447,13 +455,34 @@ export class BTCPayStorageService {
     setStorage(STORAGE_KEYS.STORES, stores);
   }
 
+  static getAdminPaymentAddress(storeId?: string): string {
+    const store = storeId ? this.getStores().find((s) => s.id === storeId) : this.getActiveStore();
+    return store?.paymentAddress || ADMIN_BITCOIN_PAYMENT_ADDRESS;
+  }
+
+  static setAdminPaymentAddress(address: string, storeId?: string): void {
+    const stores = this.getStores();
+    const targetStore = storeId ? stores.find((s) => s.id === storeId) : this.getActiveStore();
+    if (targetStore) {
+      targetStore.paymentAddress = address;
+      this.saveStore(targetStore);
+    }
+  }
+
   // INVOICES
   static getInvoices(storeId?: string): Invoice[] {
     const all = getStorage<Invoice[]>(STORAGE_KEYS.INVOICES, INITIAL_INVOICES);
+    // Ensure on-chain bitcoin invoices use the current admin bitcoin payment address
+    const mapped = all.map((inv) => {
+      if ((inv.cryptoCurrency === 'BTC' || inv.cryptoCurrency === 'BTC-LN') && inv.paymentAddress && inv.paymentAddress.startsWith('bc1q')) {
+        return { ...inv, paymentAddress: ADMIN_BITCOIN_PAYMENT_ADDRESS };
+      }
+      return inv;
+    });
     if (storeId) {
-      return all.filter((inv) => inv.storeId === storeId);
+      return mapped.filter((inv) => inv.storeId === storeId);
     }
-    return all;
+    return mapped;
   }
 
   static getInvoiceById(id: string): Invoice | undefined {
@@ -481,7 +510,7 @@ export class BTCPayStorageService {
     const id = `inv_${Date.now().toString(36)}${randomHex}`;
     const orderId = params.orderId || `ORD-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    let paymentAddress = 'bc1q' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    let paymentAddress = store.paymentAddress || ADMIN_BITCOIN_PAYMENT_ADDRESS;
     if (cryptoCurrency === 'USDT' || cryptoCurrency === 'USDC' || cryptoCurrency === 'ETH') {
       paymentAddress = '0x' + Math.random().toString(16).substring(2, 10) + '...' + Math.random().toString(16).substring(2, 6);
     }
@@ -739,7 +768,13 @@ export class BTCPayStorageService {
   }
 
   static getUtxos(): Utxo[] {
-    return getStorage<Utxo[]>(STORAGE_KEYS.UTXOS, INITIAL_UTXOS);
+    const utxos = getStorage<Utxo[]>(STORAGE_KEYS.UTXOS, INITIAL_UTXOS);
+    return utxos.map((u) => {
+      if (u.address && u.address.startsWith('bc1q')) {
+        return { ...u, address: ADMIN_BITCOIN_PAYMENT_ADDRESS };
+      }
+      return u;
+    });
   }
 
   static addUtxo(utxo: Utxo): void {
